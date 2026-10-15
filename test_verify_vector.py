@@ -14,23 +14,42 @@ class VectorTests(unittest.TestCase):
     def test_official_vector_passes(self):
         r = self.run_doc(self.fixture())
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-    def test_modified_nonce_fails(self):
-        d = self.fixture()
-        i = d["direct_rail_v1"]["task_hash"]["inputs"]
-        i["nonce"] = str(int(i["nonce"]) + 1)
-        self.assertNotEqual(self.run_doc(d).returncode, 0)
+    def assert_failure(self, doc, expected):
+        r = self.run_doc(doc)
+        self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn("Traceback", r.stderr, r.stderr)
+        for message in expected:
+            self.assertIn("FAIL | " + message, r.stdout, r.stdout + r.stderr)
+
+    def test_each_task_hash_input_mutation_fails(self):
+        original = self.fixture()
+        fields = ("genesis_hash_hex", "agent_account_id32_hex", "nonce", "model_hash_hex", "payload_hash_hex", "commit_hash_hex")
+        for field in fields:
+            with self.subTest(field=field):
+                d = json.loads(json.dumps(original))
+                inputs = d["direct_rail_v1"]["task_hash"]["inputs"]
+                if field == "nonce":
+                    inputs[field] = str(int(inputs[field]) + 1)
+                else:
+                    raw = bytearray.fromhex(inputs[field])
+                    raw[0] ^= 1
+                    inputs[field] = raw.hex()
+                self.assert_failure(d, ("task preimage", "task hash"))
+
     def test_modified_output_hash_fails(self):
         d = self.fixture()
         d["direct_rail_v1"]["inputs"]["output_hash_hex"] = "ff" * 32
-        self.assertNotEqual(self.run_doc(d).returncode, 0)
+        self.assert_failure(d, ("report preimage", "report data"))
+
     def test_modified_report_data_fails(self):
         d = self.fixture()
         d["direct_rail_v1"]["report_data_hex"] = "00" * 64
-        self.assertNotEqual(self.run_doc(d).returncode, 0)
+        self.assert_failure(d, ("report data",))
+
     def test_modified_task_preimage_fails(self):
         d = self.fixture()
         p = d["direct_rail_v1"]["task_hash"]["preimage_hex"]
         d["direct_rail_v1"]["task_hash"]["preimage_hex"] = "00" * (len(p) // 2)
-        self.assertNotEqual(self.run_doc(d).returncode, 0)
+        self.assert_failure(d, ("task preimage",))
 if __name__ == "__main__":
     unittest.main(verbosity=2)
