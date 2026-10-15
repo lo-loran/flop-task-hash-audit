@@ -51,5 +51,21 @@ class VectorTests(unittest.TestCase):
         p = d["direct_rail_v1"]["task_hash"]["preimage_hex"]
         d["direct_rail_v1"]["task_hash"]["preimage_hex"] = "00" * (len(p) // 2)
         self.assert_failure(d, ("task preimage",))
+
+    def assert_invalid_text(self, source):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "fixture.json"
+            p.write_text(source, encoding="utf-8")
+            r = subprocess.run([sys.executable, str(SCRIPT), str(p)], capture_output=True, text=True)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("ERROR |", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
+    def test_invalid_json_is_reported_cleanly(self):
+        self.assert_invalid_text("{")
+
+    def test_missing_section_is_reported_cleanly(self):
+        self.assert_invalid_text("{}")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
