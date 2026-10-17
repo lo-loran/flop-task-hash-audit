@@ -2,7 +2,15 @@ import hashlib,json,sys
 from pathlib import Path
 try:
     d=json.loads(Path(sys.argv[1]).read_text()); v=d["direct_rail_v1"]; t=v["task_hash"]; i=t["inputs"]; a=v["inputs"]
-    def pre(x): return b"FLOP/POUI/TASK\x01"+bytes.fromhex(x["genesis_hash_hex"])+bytes.fromhex(x["agent_account_id32_hex"])+int(x["nonce"]).to_bytes(8,"little")+bytes.fromhex(x["model_hash_hex"])+bytes.fromhex(x["payload_hash_hex"])+bytes.fromhex(x["commit_hash_hex"])
+    def fixed32(x, key):
+        raw = bytes.fromhex(x[key])
+        if len(raw) != 32: raise ValueError(key + " must be 32 bytes")
+        return raw
+    def nonce_u64(value):
+        n = int(value)
+        if not 0 <= n < 2**64: raise ValueError("nonce must fit unsigned 64-bit integer")
+        return n
+    def pre(x): return b"FLOP/POUI/TASK\x01"+fixed32(x,"genesis_hash_hex")+fixed32(x,"agent_account_id32_hex")+nonce_u64(x["nonce"]).to_bytes(8,"little")+fixed32(x,"model_hash_hex")+fixed32(x,"payload_hash_hex")+fixed32(x,"commit_hash_hex")
     p=pre(i); h=hashlib.blake2b(p,digest_size=32).digest()
     q=h+int(a["gn_weight"]).to_bytes(8,"little")+int(a["latency_ms"]).to_bytes(8,"little")+bytes.fromhex(a["model_hash_hex"])+bytes.fromhex(a["output_hash_hex"])+bytes.fromhex(a["decode_policy_hash_hex"])+bytes([a["tee_type"]["scale_tag"]])
     checks=[("task preimage",p.hex()==t["preimage_hex"]),("task hash",h.hex()==t["hash_hex"]==a["task_hash_hex"]),("report preimage",q.hex()==v["report_data_preimage_hex"]),("report data",hashlib.sha256(q).digest()+bytes(32)==bytes.fromhex(v["report_data_hex"]))]

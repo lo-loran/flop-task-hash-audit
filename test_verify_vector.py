@@ -67,5 +67,21 @@ class VectorTests(unittest.TestCase):
     def test_missing_section_is_reported_cleanly(self):
         self.assert_invalid_text("{}")
 
+    def test_short_task_hash_field_is_rejected(self):
+        d = self.fixture()
+        d["direct_rail_v1"]["task_hash"]["inputs"]["genesis_hash_hex"] = "00" * 31
+        r = self.run_doc(d)
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("invalid fixture or invocation: genesis_hash_hex must be 32 bytes", r.stderr, r.stdout + r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
+    def test_out_of_range_nonce_is_rejected(self):
+        d = self.fixture()
+        d["direct_rail_v1"]["task_hash"]["inputs"]["nonce"] = str(2**64)
+        r = self.run_doc(d)
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("invalid fixture or invocation: nonce must fit unsigned 64-bit integer", r.stderr, r.stdout + r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
