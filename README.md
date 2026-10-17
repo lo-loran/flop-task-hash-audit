@@ -14,7 +14,7 @@ python3 -m unittest -v test_verify_vector.py
 
 ## Scope
 
-Checks task preimage, task hash, report-data binding and six individual input mutations. Includes one positive and four negative automated tests.
+Checks task preimage, task hash, report-data binding, six individual task-hash input mutations, output-hash and report-data tampering, malformed JSON, missing sections, wrong-length hash fields, and out-of-range nonces. The suite contains 9 test methods: one positive test and eight negative test methods, including six task-hash mutation subtests.
 
 This is an offline fixture audit. It does not execute the FLOP runtime, verify a production PoUI proof, or establish runtime enforcement.
 
